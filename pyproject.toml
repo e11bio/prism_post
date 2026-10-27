@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+
+[project]
+name = "prism_post"
+version = "0.0.1"
+requires-python = ">=3.12"
+description = "Example post-processing pipeline for PRISM networks"
+
+dependencies = [
+    "boto3",
+    "funlib-learn-torch",
+    "funlib.geometry>=0.3.0",
+    "funlib.persistence>=0.7.0",
+    "gunpowder>=1.5.0",
+    "kimimaro",
+    "matplotlib",
+    "numpy",
+    "scikit-image>=0.25",
+    "torch==2.6.0",
+    "volara==1.0.5",
+    "volara-ml>=1.2.0",
+]
+
+[project.optional-dependencies]
+vis = ["neuroglancer"]
+
+[dependency-groups]
+dev = ["ruff", "pre-commit"]
+
+# Register our custom blockwise tasks with volara so that they can also be run
+# through external worker configs (e.g. slurm), not only local multiprocessing.
+[project.entry-points."volara.blockwise_tasks"]
+pseudo_affs = "prism_post.tasks:PseudoAffs"
+combine_affs = "prism_post.tasks:CombineAffs"
+
+[tool.uv.sources]
+funlib-learn-torch = { git = "https://github.com/funkelab/funlib.learn.torch" }
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["prism_post*"]
+
+[tool.ruff]
+lint.select = ["F", "E", "W", "I001"]
+# the formatter wraps code at 88, long strings and comments may go to 120
+lint.pycodestyle.max-line-length = 120
+
+[tool.funlib.persistence]
+voxel_size_attr = "resolution"
