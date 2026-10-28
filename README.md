@@ -263,7 +263,7 @@ are the match thresholds. Results go to `sweep.csv` / `relabel_sweep.csv` in the
 crop zarr. `--write` on the relabel sweep also writes every combination to
 `segments/sweep/` so you can look at them.
 
-## Having a look
+## Visualizing
 
 With the vis extra installed (`uv sync --extra vis`) you can open any of the
 datasets in neuroglancer:
