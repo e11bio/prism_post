@@ -11,16 +11,17 @@ base segmentation start visible, toggle the others on and off to compare.
 """
 
 import argparse
-from pathlib import Path
 
 import neuroglancer
 
 from prism_post.config import (
     COMBINED_AFFS,
+    CROPS,
+    DEFAULT_CROP,
     ENHANCED,
     LABELS,
     RAW,
-    SAMPLE,
+    crop_path,
     default_data_dir,
     segments_name,
 )
@@ -30,10 +31,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--affs", default=COMBINED_AFFS)
     parser.add_argument("--data-dir", default=default_data_dir())
+    parser.add_argument("--crop", type=int, choices=CROPS, default=DEFAULT_CROP)
     parser.add_argument("-b", "--bind-address", default="localhost")
     args = parser.parse_args()
 
-    sample = Path(args.data_dir) / SAMPLE
+    sample = crop_path(args.data_dir, args.crop)
     base = segments_name(args.affs)
     variants = [
         n

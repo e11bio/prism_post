@@ -19,7 +19,7 @@ each bias, so you can see how far it moves things and how it interacts with
 the bias. It skeletonizes every segmentation, so it takes a minute per bias.
 
 Segmentations go under segments/sweep/, results to sweep.csv and sweep.png
-in the data dir. If interrupted it picks up from the csv.
+in the crop zarr. If interrupted it picks up from the csv.
 """
 
 import csv
@@ -40,8 +40,8 @@ from prism_post.config import (
     ENHANCED,
     LABELS,
     PRED_AFFS,
-    SAMPLE,
     argument_parser,
+    crop_path,
     db_name,
     fragments_name,
     lut_name,
@@ -159,10 +159,10 @@ if __name__ == "__main__":
     parser.add_argument("--plot-only", action="store_true")
     args = parser.parse_args()
 
-    sample = args.data_dir / SAMPLE
-    csv_path = args.data_dir / "sweep.csv"
-    png_path = args.data_dir / "sweep.png"
-    set_log_basedir(args.data_dir / "volara_logs")
+    sample = crop_path(args.data_dir, args.crop)
+    csv_path = sample / "sweep.csv"
+    png_path = sample / "sweep.png"
+    set_log_basedir(sample / "volara_logs")
 
     series = (
         args.affs + [f"{a} + relabel" for a in args.affs] if args.relabel else args.affs

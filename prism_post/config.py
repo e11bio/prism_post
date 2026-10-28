@@ -1,6 +1,6 @@
 """
 Shared settings for all the scripts: where data and checkpoints live,
-dataset names inside the sample zarr, the affinity neighborhood and the post
+dataset names inside the crop zarr, the affinity neighborhood and the post
 processing parameters.
 
 Directories are picked in this order:
@@ -32,19 +32,36 @@ def default_checkpoint_dir() -> Path:
     return Path(os.environ.get(ENV_CHECKPOINT_DIR, Path.cwd() / "checkpoints"))
 
 
+# the bucket has 14 labelled crops, but only crop_0 to crop_4 have the 18
+# barcode channels the released models were trained on (the rest are from
+# other imaging rounds with fewer channels). The tutorial uses one of them,
+# pass --crop to the download and to any script for another
+CROPS = [0, 1, 2, 3, 4]
+DEFAULT_CROP = 2
+
+
+def crop_name(crop: int) -> str:
+    return f"crop_{crop}.zarr"
+
+
+def crop_path(data_dir: Path, crop: int) -> Path:
+    return Path(data_dir) / crop_name(crop)
+
+
 def argument_parser(
-    description: str, workers: int | None = None
+    description: str, workers: int | None = None, crops: bool = False
 ) -> argparse.ArgumentParser:
     """
-    Argument parser with the --data-dir / --checkpoint-dir options every
-    script takes. Pass workers to also get a --num-workers option.
+    Argument parser with the --data-dir / --checkpoint-dir / --crop options
+    every script takes. Pass workers to also get a --num-workers option.
+    crops=True lets --crop take several numbers.
     """
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument(
         "--data-dir",
         type=Path,
         default=default_data_dir(),
-        help=f"where the sample zarr lives (default: ${ENV_DATA_DIR} or ./data)",
+        help=f"where the crop zarrs live (default: ${ENV_DATA_DIR} or ./data)",
     )
     parser.add_argument(
         "--checkpoint-dir",
@@ -52,6 +69,23 @@ def argument_parser(
         default=default_checkpoint_dir(),
         help=f"where model checkpoints live (default: ${ENV_CHECKPOINT_DIR} or ./checkpoints)",
     )
+    if crops:
+        parser.add_argument(
+            "--crop",
+            type=int,
+            nargs="+",
+            choices=CROPS,
+            default=[DEFAULT_CROP],
+            help=f"which crops to download, e.g. --crop 2 3 (default: {DEFAULT_CROP})",
+        )
+    else:
+        parser.add_argument(
+            "--crop",
+            type=int,
+            choices=CROPS,
+            default=DEFAULT_CROP,
+            help=f"which crop to process, <data_dir>/crop_<n>.zarr (default: {DEFAULT_CROP})",
+        )
     if workers is not None:
         parser.add_argument(
             "--num-workers",
@@ -65,17 +99,17 @@ def argument_parser(
 # sample data and checkpoints
 
 BUCKET = "e11bio-prism"
-CROP_KEY = "ls/models/training_data/instance/crop_2.zarr"
+CROP_PREFIX = "ls/models/training_data/instance"  # crop_<n>.zarr under here
 CHECKPOINT_KEY = "ls/models/checkpoints"
 
 # the four models we need for segmentation (no synapses here)
 MODEL_NAMES = ["enhanced", "affs", "uniform", "binary_channel_agnostic"]
 
 # --------------------------------------------------------------------------- #
-# Datasets inside <data_dir>/<SAMPLE>
+# Datasets inside <data_dir>/crop_<n>.zarr
 # --------------------------------------------------------------------------- #
 #
-# sample.zarr/
+# crop_2.zarr/
 #   raw, labels            downloaded
 #   predictions/           network outputs + the mask
 #   affs/                  all affinities, the main inputs to segmentation
@@ -85,8 +119,9 @@ MODEL_NAMES = ["enhanced", "affs", "uniform", "binary_channel_agnostic"]
 #   segments/<affs>        segmentations
 #   skeletons/<affs>.npz   segment skeletons, for the barcode relabel
 #   segments/sweep/        what the sweeps write, see 06 and 07
-
-SAMPLE = "sample.zarr"
+#   *.csv, *.png           results of 05, 06 and 07 --sweep
+#   volara_logs/           worker logs + block done cache, per task. These
+#                          are what lets an interrupted task resume
 
 RAW = "raw"  # 18 channel barcode data, uint8
 LABELS = "labels"  # sparse instance ground truth, uint64

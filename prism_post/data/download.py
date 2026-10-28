@@ -3,13 +3,18 @@ Download the example crop and checkpoints from the public e11bio-prism bucket.
 
 We only grab what we need, about 4gb total:
 
-* raw + labels for one crop -> <data_dir>/sample.zarr
+* raw + labels for one crop -> <data_dir>/crop_2.zarr
 * model_checkpoint_* weights for the four models -> <checkpoint_dir>/<model>/
 
 The bucket also has model.pt files, but we can't load those here (see
 checkpoints.py), so we skip them.
 
     uv run python prism_post/data/download.py
+    uv run python prism_post/data/download.py --crop 2 3    # more than one crop
+
+crop_0 to crop_4 have the 18 channels the released models expect (about
+1.4gb each), the other crops in the bucket are from different imaging rounds.
+Every script takes --crop to pick which one to work on.
 """
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -22,12 +27,13 @@ from botocore.client import Config
 from prism_post.config import (
     BUCKET,
     CHECKPOINT_KEY,
-    CROP_KEY,
+    CROP_PREFIX,
     LABELS,
     MODEL_NAMES,
     RAW,
-    SAMPLE,
     argument_parser,
+    crop_name,
+    crop_path,
 )
 
 
@@ -77,13 +83,16 @@ def download_prefix(
                 print(f"  {i}/{len(keys)}")
 
 
-def download_sample(data_dir: Path) -> Path:
-    sample = data_dir / SAMPLE
+def download_crop(data_dir: Path, crop: int) -> Path:
+    sample = crop_path(data_dir, crop)
     if (sample / RAW).exists() and (sample / LABELS).exists():
         print(f"{sample} already exists, skipping")
         return sample
     download_prefix(
-        BUCKET, CROP_KEY, sample, include=[".zgroup", f"{RAW}/", f"{LABELS}/"]
+        BUCKET,
+        f"{CROP_PREFIX}/{crop_name(crop)}",
+        sample,
+        include=[".zgroup", f"{RAW}/", f"{LABELS}/"],
     )
     return sample
 
@@ -104,6 +113,7 @@ def download_checkpoints(checkpoint_dir: Path) -> None:
 
 
 if __name__ == "__main__":
-    args = argument_parser(__doc__).parse_args()
-    download_sample(args.data_dir)
+    args = argument_parser(__doc__, crops=True).parse_args()
+    for crop in args.crop:
+        download_crop(args.data_dir, crop)
     download_checkpoints(args.checkpoint_dir)

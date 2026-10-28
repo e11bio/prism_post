@@ -16,17 +16,17 @@ from prism_post.config import (
     BLOCK_SIZE,
     NEIGHBORHOOD,
     PSEUDO_AFFS,
-    SAMPLE,
     UNIFORM,
     affs_name,
     argument_parser,
+    crop_path,
 )
 from prism_post.tasks import PseudoAffs
 
 if __name__ == "__main__":
     args = argument_parser(__doc__, workers=8).parse_args()
-    sample = args.data_dir / SAMPLE
-    set_log_basedir(args.data_dir / "volara_logs")
+    sample = crop_path(args.data_dir, args.crop)
+    set_log_basedir(sample / "volara_logs")
 
     pseudo_affs = PseudoAffs(
         # uint8 [0, 255] -> embedding range [-1, 1]

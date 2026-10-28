@@ -27,7 +27,7 @@ try a few thresholds and radii:
     uv run python prism_post/post/07_barcode_relabel.py --affs combined_affs --sweep
 
 which scores every combination in memory and plots them (relabel_sweep.csv /
-.png in the data dir) without writing a segmentation. --sweep-thresholds,
+.png in the crop zarr) without writing a segmentation. --sweep-thresholds,
 --sweep-radii and --sweep-split-factors set what gets tried, and --write also
 writes every combination to segments/sweep/ so you can compare them in
 neuroglancer with prism_post/view_sweep.py.
@@ -66,8 +66,8 @@ from prism_post.config import (
     COMBINED_AFFS,
     ENHANCED,
     LABELS,
-    SAMPLE,
     argument_parser,
+    crop_path,
     fragments_name,
     lut_name,
     segments_name,
@@ -157,8 +157,8 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    sample = args.data_dir / SAMPLE
-    set_log_basedir(args.data_dir / "volara_logs")
+    sample = crop_path(args.data_dir, args.crop)
+    set_log_basedir(sample / "volara_logs")
 
     labels = open_ds(sample / LABELS)
     roi = labels.roi
@@ -200,16 +200,18 @@ if __name__ == "__main__":
         lut = LUT(path=sample / lut_name(out_name))
         lut.file.parent.mkdir(parents=True, exist_ok=True)
         lut.save(new_lut)
-        run(
-            Relabel(
-                roi=roi,
-                frags_data=Labels(store=sample / fragments_name(args.affs)),
-                seg_data=Labels(store=sample / segments_name(out_name)),
-                lut=lut,
-                block_size=BLOCK_SIZE,
-                num_workers=args.num_workers,
-            )
+        relabel = Relabel(
+            roi=roi,
+            frags_data=Labels(store=sample / fragments_name(args.affs)),
+            seg_data=Labels(store=sample / segments_name(out_name)),
+            lut=lut,
+            block_size=BLOCK_SIZE,
+            num_workers=args.num_workers,
         )
+        # volara tasks resume by default, which here would mean a rerun with
+        # other parameters keeps the old segmentation. Always start fresh
+        relabel.drop()
+        run(relabel)
         print(f"wrote {sample / segments_name(out_name)}", flush=True)
 
     before = score(gt, segments)
@@ -249,13 +251,13 @@ if __name__ == "__main__":
                     mapping,
                     f"sweep/{args.affs}_r{radius / 1000:g}um_x{factor:g}_t{threshold:g}",
                 )
-        csv_path = args.data_dir / "relabel_sweep.csv"
+        csv_path = sample / "relabel_sweep.csv"
         with csv_path.open("w", newline="") as f:
             w = csv.DictWriter(f, fieldnames=list(rows[0]))
             w.writeheader()
             w.writerows(rows)
         print(f"wrote {csv_path}", flush=True)
-        plot_sweep(rows, args.data_dir / "relabel_sweep.png")
+        plot_sweep(rows, sample / "relabel_sweep.png")
         raise SystemExit
 
     # 3. match + relabel

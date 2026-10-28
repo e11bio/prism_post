@@ -38,18 +38,19 @@ segmentation against the ground truth with simple labels based voi, so the
 contribution of each step is visible.
 
 Note - this is a simple example of the post processing, not the full evaluation
-from the paper. The models were trained on this very crop, so the numbers here
-say nothing about generalization, and we score with a plain in memory VOI
-against the sparse labels. The labels were drawn inside this crop, so a neuron
-that leaves and re-enters the crop has different ids on each piece, and when the
-barcode relabel correctly bridges two such pieces it counts as a merge (only a
-handful of cases here, `05_evaluate.py --gt-merge` shows the numbers without
-them). Mutex watershed also improves with more context, so segmenting this small
-crop directly might givv a somewhat worse result than segmenting a large volume
-and cropping it down. The paper's evaluation ran on larger regions, with
-skeleton ground truth and graph based metrics like expected run length and the
-min cut metric, using more custom code. None of that is required to understand
-the basic segmentation pipeline, which is what this repo is for.
+from the paper. The models were trained on this crop (and every other crop in
+the bucket), so the numbers here say nothing about generalization, and we score
+with a plain in memory VOI against the sparse labels. The labels were drawn
+inside this crop, so a neuron that leaves and re-enters the crop has different
+ids on each piece, and when the barcode relabel correctly bridges two such
+pieces it counts as a merge (only a handful of cases here, `05_evaluate.py
+--gt-merge` shows the numbers without them). Mutex watershed also improves with
+more context, so segmenting this small crop directly might give a somewhat worse
+result than segmenting a large volume and cropping it down. The paper's
+evaluation ran on larger regions, with skeleton ground truth and graph based
+metrics like expected run length and the min cut metric, using more custom code.
+None of that is required to understand the basic segmentation pipeline, which is
+what this repo is for.
 
 ## Getting started
 
@@ -79,11 +80,11 @@ the basic segmentation pipeline, which is what this repo is for.
     ```
     uv run python prism_post/data/download.py
     ```
-   This gets the raw data and labels for one crop (`<data_dir>/sample.zarr`) and
+   This gets the raw data and labels for one crop (`<data_dir>/crop_2.zarr`) and
    the weights for the four models (`<checkpoint_dir>/<model>/`). Everything the
-   scripts produce also goes into `sample.zarr`:
+   scripts produce also goes into that zarr:
     ```
-    sample.zarr/
+    crop_2.zarr/
       raw, labels          downloaded
       predictions/         enhanced, binary, uniform, mask
       affs/                pred_affs, pseudo_affs, combined_affs
@@ -93,7 +94,23 @@ the basic segmentation pipeline, which is what this repo is for.
       segments/<affs>      segmentations
       skeletons/<affs>.npz segment skeletons, used by the barcode relabel
       segments/sweep/      what the sweeps write
+      *.csv, *.png         evaluation and sweep results
+      volara_logs/         worker logs and the block done cache of each task
     ```
+   Crops 0 to 4 in the bucket were imaged with the same 18 barcodes, so the
+   released models work on any of them (about 1.4gb each). The other crops in
+   the bucket are from different imaging rounds with 10 to 12 channels. The
+   enhancement and expression models don't care about the channel count, but the
+   affinity and embedding models were trained on these 18 barcodes, so using
+   those crops means retraining them (see prism_training). To try another of the
+   five pass `--crop`, to the download and then to every script:
+    ```
+    uv run python prism_post/data/download.py --crop 2 3
+    uv run python prism_post/inference/01_enhanced.py --crop 3
+    ```
+   Each crop is processed on its own. Looping over several, or running on a
+   larger volume that isn't one of these crops, can be done in custom
+   extensions.
 
 ## Inference
 
@@ -243,7 +260,7 @@ which is why we start from a split leaning segmentation.
 
 The relabel's own sweep, each line is a pair of radii and the points along it
 are the match thresholds. Results go to `sweep.csv` / `relabel_sweep.csv` in the
-data dir. `--write` on the relabel sweep also writes every combination to
+crop zarr. `--write` on the relabel sweep also writes every combination to
 `segments/sweep/` so you can look at them.
 
 ## Having a look
@@ -265,7 +282,9 @@ medium range offsets.
 Every blockwise task picks up where it left off, so if a run is interrupted you
 can rerun the script. To recompute something from scratch, delete the output
 dataset (plus the `dbs/` and `luts/` files for a segmentation) or call `.drop()`
-on the task.
+on the task. The barcode relabel does that itself, since trying other
+parameters is the normal way to use it. For the segmentation this matters if
+you change `SEG_BIAS`, otherwise the old segments stay.
 
 ## Layout
 

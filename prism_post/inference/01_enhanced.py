@@ -7,7 +7,7 @@ input.
     uv run python prism_post/inference/01_enhanced.py
 """
 
-from prism_post.config import ENHANCED, RAW, argument_parser
+from prism_post.config import ENHANCED, RAW, argument_parser, crop_path
 from prism_post.inference.predict import run_predict
 
 if __name__ == "__main__":
@@ -16,7 +16,7 @@ if __name__ == "__main__":
         "enhanced",
         RAW,
         [ENHANCED],
-        args.data_dir,
+        crop_path(args.data_dir, args.crop),
         args.checkpoint_dir,
         num_workers=args.num_workers,
     )

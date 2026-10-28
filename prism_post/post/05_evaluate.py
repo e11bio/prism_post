@@ -37,8 +37,8 @@ from prism_post.config import (
     ENHANCED,
     LABELS,
     PRED_AFFS,
-    SAMPLE,
     argument_parser,
+    crop_path,
     segments_name,
 )
 from prism_post.evaluate import (
@@ -59,7 +59,9 @@ if __name__ == "__main__":
         default=DEFAULT_AFFS,
         help="affinity datasets whose segmentations to score (missing ones are skipped)",
     )
-    parser.add_argument("--csv", default="voi.csv", help="where to write results")
+    parser.add_argument(
+        "--csv", default=None, help="where to write results (default: <crop>/voi.csv)"
+    )
     parser.add_argument(
         "--gt-merge",
         action="store_true",
@@ -67,7 +69,8 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    sample = args.data_dir / SAMPLE
+    sample = crop_path(args.data_dir, args.crop)
+    csv_path = args.csv or sample / "voi.csv"
     labels = open_ds(sample / LABELS)
     gt = labels[labels.roi]
     if args.gt_merge:
@@ -88,7 +91,7 @@ if __name__ == "__main__":
     if not rows:
         raise SystemExit("no segmentations found, run 04_segment.py first")
 
-    with open(args.csv, "w", newline="") as f:
+    with open(csv_path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=list(rows[0]))
         writer.writeheader()
         writer.writerows(rows)
@@ -96,4 +99,4 @@ if __name__ == "__main__":
     print("\n" + format_header())
     for r in rows:
         print(format_row(r["affs"], r))
-    print(f"\nwrote {args.csv}")
+    print(f"\nwrote {csv_path}")

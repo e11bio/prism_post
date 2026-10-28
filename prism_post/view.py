@@ -1,5 +1,5 @@
 """
-Look at datasets in the sample zarr with neuroglancer.
+Look at datasets in a crop zarr with neuroglancer.
 
     uv run python prism_post/view.py # everything that exists
     uv run python prism_post/view.py raw predictions/enhanced labels   # just some
@@ -10,15 +10,14 @@ laptop (replace the host with the machine's address).
 """
 
 import argparse
-from pathlib import Path
 
 import neuroglancer
 import numpy as np
 from funlib.persistence import open_ds
 
-from prism_post.config import SAMPLE, default_data_dir
+from prism_post.config import CROPS, DEFAULT_CROP, crop_path, default_data_dir
 
-# how to show each dataset, by its path inside sample.zarr. anything not
+# how to show each dataset, by its path inside the crop zarr. anything not
 # listed here (fragments/*, segments/*, ...) is shown as a segmentation
 IMAGES = {
     "raw": "barcodes",
@@ -270,7 +269,7 @@ def local_volume(array):
 
 
 def make_layer(sample, name):
-    """A neuroglancer layer for a dataset in the sample zarr, shader by kind."""
+    """A neuroglancer layer for a dataset in the crop zarr, shader by kind."""
     array = open_ds(sample / name)
     vol = local_volume(array)
     kind = IMAGES.get(name)
@@ -294,10 +293,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("datasets", nargs="*", help="datasets to show (default: all)")
     parser.add_argument("--data-dir", default=default_data_dir())
+    parser.add_argument("--crop", type=int, choices=CROPS, default=DEFAULT_CROP)
     parser.add_argument("-b", "--bind-address", default="localhost")
     args = parser.parse_args()
 
-    sample = Path(args.data_dir) / SAMPLE
+    sample = crop_path(args.data_dir, args.crop)
     if args.datasets:
         names = args.datasets
     else:

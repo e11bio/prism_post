@@ -17,14 +17,14 @@ from prism_post.config import (
     BLOCK_SIZE,
     MASK,
     MASK_THRESHOLD,
-    SAMPLE,
     argument_parser,
+    crop_path,
 )
 
 if __name__ == "__main__":
     args = argument_parser(__doc__, workers=8).parse_args()
-    sample = args.data_dir / SAMPLE
-    set_log_basedir(args.data_dir / "volara_logs")
+    sample = crop_path(args.data_dir, args.crop)
+    set_log_basedir(sample / "volara_logs")
 
     threshold = Threshold(
         # binary is stored as (1, z, y, x), channels=0 gives us (z, y, x)

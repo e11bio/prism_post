@@ -17,16 +17,16 @@ from prism_post.config import (
     NEIGHBORHOOD,
     PRED_AFFS,
     PSEUDO_AFFS,
-    SAMPLE,
     affs_name,
     argument_parser,
+    crop_path,
 )
 from prism_post.tasks import CombineAffs
 
 if __name__ == "__main__":
     args = argument_parser(__doc__, workers=8).parse_args()
-    sample = args.data_dir / SAMPLE
-    set_log_basedir(args.data_dir / "volara_logs")
+    sample = crop_path(args.data_dir, args.crop)
+    set_log_basedir(sample / "volara_logs")
 
     combine = CombineAffs(
         affs_a=Affs(store=sample / affs_name(PRED_AFFS), neighborhood=NEIGHBORHOOD),

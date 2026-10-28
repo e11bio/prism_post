@@ -36,11 +36,11 @@ from prism_post.config import (
     NEIGHBORHOOD,
     RANDOMIZED_STRIDES,
     REMOVE_DEBRIS,
-    SAMPLE,
     SEG_BIAS,
     STRIDES,
     affs_name,
     argument_parser,
+    crop_path,
     db_name,
     fragments_name,
     lut_name,
@@ -61,8 +61,8 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    sample = args.data_dir / SAMPLE
-    set_log_basedir(args.data_dir / "volara_logs")
+    sample = crop_path(args.data_dir, args.crop)
+    set_log_basedir(sample / "volara_logs")
 
     # only segment where we have ground truth to score against
     roi = open_ds(sample / LABELS).roi
@@ -76,6 +76,7 @@ if __name__ == "__main__":
         edge_attrs={"adj_weight": "float", "lr_weight": "float"},
     )
     lut = LUT(path=sample / lut_name(args.affs))
+    lut.file.parent.mkdir(parents=True, exist_ok=True)
 
     extract_frags = ExtractFrags(
         roi=roi,
